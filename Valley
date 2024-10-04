@@ -1,0 +1,100 @@
+#include <iostream>
+#include <cstdio>
+#include <vector>
+#include <cmath>
+#include <set>
+using namespace std;
+using ll = long long;
+ 
+const ll INF = 1e18;
+const int MXN = 1e5 + 1;
+ 
+vector<vector<pair<pair<ll, int>, int>>> adj(MXN, vector<pair<pair<ll, int>, int>>(0));
+vector<int> dep(MXN, 0);
+vector<ll> diste(MXN, 0);
+vector<ll> magic(MXN, INF);
+vector<bool> shop(MXN, false);
+vector<int> abvdep(MXN);
+vector<vector<pair<int, int>>> qatnde(MXN, vector<pair<int, int>>(0));
+vector<bool> esc(MXN, false);
+vector<ll> fans(MXN, INF);
+set<int> edgused;
+vector<int> par(MXN, 0);
+ 
+void dfs(int node, int p = 0)
+{
+	for (pair<int, int> qry : qatnde[node]) if (edgused.count(qry.first) == 0) esc[qry.second] = true;
+	if (shop[node]) magic[node] = diste[node];
+	for (int i = 0; i < adj[node].size(); i++)
+	{
+		pair<pair<ll, int>, int> nxt = adj[node][i];
+		if (nxt.first.second != p)
+		{
+			edgused.insert(nxt.second), dep[nxt.first.second] = dep[node] + 1, diste[nxt.first.second] = diste[node] + nxt.first.first, abvdep[nxt.second] = dep[node], par[nxt.first.second] = node;
+			dfs(nxt.first.second, node);
+			magic[node] = fmin(magic[node], magic[nxt.first.second]), edgused.erase(nxt.second);
+		}
+	}
+}
+ 
+int main()
+{
+	ios::sync_with_stdio(false);
+	cin.tie(nullptr);
+ 
+	int n, s, q, e;
+	cin >> n >> s >> q >> e;
+	for (int i = 1; i < n; i++)
+	{
+		int a, b;
+		ll w;
+		cin >> a >> b >> w;
+		adj[a].push_back({ {w, b}, i }), adj[b].push_back({ {w, a}, i });
+	}
+ 
+	while (s--)
+	{
+		int a;
+		cin >> a;
+		shop[a] = true;
+	}
+ 
+	for (int i = 0; i < q; i++)
+	{
+		int I, r;
+		cin >> I >> r;
+		qatnde[r].push_back({ I, i });
+	}
+ 
+	dfs(e);
+	for (int i = 1; i <= n; i++) if (magic[i] != INF) magic[i] -= 2 * diste[i];
+	vector<vector<int>> blftpar(1, par);
+	vector<vector<ll>> blftmagic(1, magic);
+	int k = 18;
+	while (k--)
+	{
+		vector<ll> nmgc = blftmagic.back();
+		vector<int> npar = blftpar.back();
+		for (int i = 1; i <= n; i++) npar[i] = blftpar.back()[blftpar.back()[i]], nmgc[i] = fmin(nmgc[i], blftmagic.back()[blftpar.back()[i]]);
+		blftpar.push_back(npar), blftmagic.push_back(nmgc);
+	}
+ 
+	for (int node = 1; node <= n; node++) for (pair<int, int> qry : qatnde[node]) if (!esc[qry.second])
+	{
+		int cnode = node, goup = dep[node] - abvdep[qry.first];
+		for (int i = blftpar.size() - 1; i > -1; i--) if (goup & (1 << i))
+		{
+			fans[qry.second] = fmin(fans[qry.second], blftmagic[i][cnode]);
+			cnode = blftpar[i][cnode];
+		}
+ 
+		if (fans[qry.second] != INF) fans[qry.second] += diste[node];
+	}
+ 
+	for (int i = 0; i < q; i++)
+	{
+		if (esc[i]) cout << "escaped\n";
+		else if (fans[i] == INF) cout << "oo\n";
+		else cout << fans[i] << "\n";
+	}
+}
